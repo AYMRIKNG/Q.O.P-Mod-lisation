@@ -1,11 +1,1594 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Index</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chiffrement Holographique Temporel — T.V.G.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#050b14;
+    --panel:#0a1420;
+    --panel-edge:#12253a;
+    --cyan:#00e5ff;
+    --cyan-dim:#0891a8;
+    --green:#39ff88;
+    --amber:#ff9d47;
+    --text-dim:#5b7a91;
+    --text:#cfe8ff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    width:100%; height:100%; overflow:hidden;
+    background:var(--void);
+    font-family:'JetBrains Mono', monospace;
+    color:var(--text);
+  }
+  #scene-canvas{ position:fixed; inset:0; display:block; }
+
+  /* ---------- HUD scanline / vignette atmosphere ---------- */
+  #vignette{
+    position:fixed; inset:0; pointer-events:none; z-index:5;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,5,10,0.85) 100%);
+  }
+  #scanlines{
+    position:fixed; inset:0; pointer-events:none; z-index:6; opacity:0.06;
+    background: repeating-linear-gradient(to bottom, #fff 0px, #fff 1px, transparent 1px, transparent 3px);
+  }
+
+  /* ---------- world-space labels (projected from 3D points onto the screen) ---------- */
+  .world-label{
+    position:fixed; top:0; left:0; z-index:8;
+    transform:translate(-50%, -140%);
+    padding:6px 12px; white-space:nowrap;
+    background:rgba(6,14,22,0.62); backdrop-filter:blur(4px);
+    border:1px solid var(--panel-edge);
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    pointer-events:none; opacity:0; transition:opacity 0.35s ease;
+    display:flex; flex-direction:column; gap:2px; text-align:center;
+  }
+  .world-label.show{ opacity:1; }
+  .world-label .wl-title{
+    font-family:'Orbitron', sans-serif; font-weight:700; font-size:10px;
+    letter-spacing:0.14em; text-transform:uppercase;
+  }
+  .world-label .wl-sub{
+    font-size:9.5px; letter-spacing:0.03em; color:var(--text-dim);
+  }
+  .world-label.ram{ opacity:1; transition:none; }
+  .world-label.ram .wl-title{ color:var(--cyan); text-shadow:0 0 10px rgba(0,229,255,0.5); }
+  .world-label.entry .wl-title{ color:var(--cyan); text-shadow:0 0 10px rgba(0,229,255,0.5); }
+  .world-label.exit .wl-title{ color:var(--green); text-shadow:0 0 10px rgba(57,255,136,0.5); }
+  .world-label.exit{ border-color:rgba(57,255,136,0.35); }
+  .world-label.entry{ border-color:rgba(0,229,255,0.35); }
+
+
+  #eyebrow{
+    position:fixed; top:22px; left:50%; transform:translateX(-50%);
+    z-index:10; text-align:center; pointer-events:none;
+  }
+  #eyebrow .kicker{
+    font-family:'Orbitron', sans-serif; font-weight:500; font-size:11px;
+    letter-spacing:0.45em; color:var(--cyan-dim); text-transform:uppercase;
+  }
+  #eyebrow h1{
+    font-family:'Orbitron', sans-serif; font-weight:900; font-size:22px;
+    letter-spacing:0.15em; color:var(--text); margin-top:4px;
+    text-shadow:0 0 18px rgba(0,229,255,0.45);
+  }
+
+  /* ---------- T.V.G side panel ---------- */
+  #tvg-panel{
+    position:fixed; top:110px; left:24px; width:300px;
+    z-index:10; background:rgba(10,20,32,0.72);
+    border:1px solid var(--panel-edge);
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 40px rgba(0,229,255,0.06), inset 0 0 40px rgba(0,229,255,0.03);
+  }
+  #tvg-panel .panel-head{
+    padding:12px 16px; border-bottom:1px solid var(--panel-edge);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  #tvg-panel .panel-head span{
+    font-family:'Orbitron', sans-serif; font-size:11px; letter-spacing:0.2em; color:var(--cyan);
+  }
+  #tvg-panel .dot{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); }
+  #tvg-panel .dot.frozen{ background:var(--amber); box-shadow:0 0 8px var(--amber); }
+
+  /* ---------- Settings side panel ---------- */
+  #settings-panel{
+    position:fixed; top:110px; right:24px; width:300px;
+    z-index:10; background:rgba(10,20,32,0.72);
+    border:1px solid var(--panel-edge);
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 40px rgba(0,229,255,0.06), inset 0 0 40px rgba(0,229,255,0.03);
+  }
+  #settings-panel .panel-head{
+    padding:12px 16px; border-bottom:1px solid var(--panel-edge);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  #settings-panel .panel-head span{
+    font-family:'Orbitron', sans-serif; font-size:11px; letter-spacing:0.2em; color:var(--cyan);
+  }
+
+  .field{ padding:10px 16px; border-bottom:1px solid rgba(18,37,58,0.7); }
+  .field .label{ font-size:10px; letter-spacing:0.15em; color:var(--text-dim); text-transform:uppercase; margin-bottom:4px; }
+  .field .value{ font-size:14px; color:var(--text); letter-spacing:0.03em; word-break:break-all; }
+  .field.wide .value{ font-size:12.5px; color:var(--cyan); }
+  .coords{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .coords div{ text-align:center; }
+  .coords .label{ margin-bottom:2px; }
+  .coords .value{ font-size:13px; }
+  .angles{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+
+  #fire-btn{
+    display:block; width:calc(100% - 32px); margin:16px;
+    padding:14px 10px; text-align:center; cursor:pointer;
+    background:linear-gradient(180deg, rgba(0,229,255,0.16), rgba(0,229,255,0.04));
+    border:1px solid var(--cyan-dim); color:var(--cyan);
+    font-family:'Orbitron', sans-serif; font-weight:700; font-size:12px; letter-spacing:0.12em;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    transition: all 0.15s ease;
+    user-select:none;
+  }
+  #fire-btn:hover{ background:linear-gradient(180deg, rgba(0,229,255,0.3), rgba(0,229,255,0.08)); box-shadow:0 0 24px rgba(0,229,255,0.35); }
+  #fire-btn:active{ transform:scale(0.98); }
+  #fire-btn.disabled{ opacity:0.35; pointer-events:none; }
+
+  /* ---------- Hacker Button & Mode ---------- */
+  #hacker-btn{
+    display:block; width:calc(100% - 32px); margin:0 16px 16px 16px;
+    padding:12px 10px; text-align:center; cursor:pointer;
+    background:linear-gradient(180deg, rgba(255,46,85,0.22), rgba(255,46,85,0.06));
+    border:1px solid #ff2e55; color:#ff5577;
+    font-family:'Orbitron', sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    transition: all 0.15s ease;
+    user-select:none;
+    box-shadow: 0 0 15px rgba(255,46,85,0.2);
+  }
+  #hacker-btn:hover{
+    background:linear-gradient(180deg, rgba(255,46,85,0.4), rgba(255,46,85,0.12));
+    box-shadow:0 0 28px rgba(255,46,85,0.5); color:#ffffff;
+  }
+  #hacker-btn:active{ transform:scale(0.98); }
+
+  body.hacker-mode {
+    --cyan: #ff2e55;
+    --cyan-dim: #a80824;
+    --green: #ff3355;
+    --panel-edge: #5a1220;
+    --text-dim: #915b65;
+  }
+  body.hacker-mode #vignette {
+    background: radial-gradient(ellipse at center, rgba(30,0,5,0.25) 40%, rgba(45,0,10,0.92) 100%);
+  }
+
+  /* ---------- Hacker Modal ---------- */
+  #hacker-modal {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(5, 2, 8, 0.78); backdrop-filter: blur(8px);
+    opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+  }
+  #hacker-modal.show {
+    opacity: 1; pointer-events: auto;
+  }
+  .hm-box {
+    width: 90%; max-width: 620px;
+    background: rgba(18, 8, 14, 0.95);
+    border: 1px solid #ff2e55;
+    box-shadow: 0 0 50px rgba(255, 46, 85, 0.35), inset 0 0 30px rgba(255, 46, 85, 0.08);
+    clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+  }
+  .hm-head {
+    background: linear-gradient(90deg, rgba(255,46,85,0.25), rgba(255,46,85,0.05));
+    padding: 14px 20px; border-bottom: 1px solid rgba(255,46,85,0.4);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .hm-head h3 {
+    font-family: 'Orbitron', sans-serif; font-size: 13px; letter-spacing: 0.15em; color: #ff5577;
+    text-shadow: 0 0 10px rgba(255,46,85,0.6);
+  }
+  .hm-body {
+    padding: 20px; display: flex; flex-direction: column; gap: 16px;
+  }
+  .hm-meta {
+    font-size: 11px; color: #915b65; line-height: 1.5; border-bottom: 1px dashed rgba(255,46,85,0.25); padding-bottom: 12px;
+  }
+  .hm-payload {
+    background: rgba(10, 4, 8, 0.8); border: 1px solid rgba(255,46,85,0.3);
+    padding: 14px; border-radius: 4px; font-size: 12px; color: #ffccd5; line-height: 1.6;
+  }
+  .hm-payload .tag { color: #ff2e55; font-weight: 700; }
+  .hm-status {
+    padding: 14px; text-align: center; font-family: 'Orbitron', sans-serif;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.12em;
+    background: rgba(255,46,85,0.15); border: 1px solid #ff2e55; color: #ffffff;
+    text-shadow: 0 0 12px rgba(255,46,85,0.8); display: none;
+  }
+  .hm-status.show { display: block; animation: pulseStatus 1.5s infinite alternate; }
+  @keyframes pulseStatus { 0% { opacity: 0.8; } 100% { opacity: 1; box-shadow: 0 0 20px rgba(255,46,85,0.4); } }
+
+  #hm-close-btn {
+    display: block; width: 100%; margin-top: 10px; padding: 12px; text-align: center; cursor: pointer;
+    background: rgba(255,46,85,0.1); border: 1px solid rgba(255,46,85,0.4); color: #ff5577;
+    font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 0.15em; font-weight: 700;
+    transition: all 0.2s ease;
+  }
+  #hm-close-btn:hover { background: rgba(255,46,85,0.25); color: #fff; box-shadow: 0 0 20px rgba(255,46,85,0.3); }
+
+  /* ---------- bottom key output bar ---------- */
+  #key-bar{
+    position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(0);
+    z-index:10; min-width:340px; max-width:80vw;
+    background:rgba(10,20,32,0.8); border:1px solid var(--panel-edge);
+    padding:14px 26px; text-align:center;
+    clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0 50%);
+    opacity:0; transition: opacity 0.4s ease, transform 0.4s ease;
+    backdrop-filter: blur(6px);
+  }
+  #key-bar.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
+  #key-bar .kb-label{ font-size:10px; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; }
+  #key-bar .kb-value{ font-size:16px; letter-spacing:0.12em; color:var(--green); text-shadow:0 0 12px rgba(57,255,136,0.6); }
+
+  /* ---------- helper caption bottom right ---------- */
+  #hint{
+    position:fixed; bottom:26px; right:26px; z-index:10;
+    font-size:10.5px; letter-spacing:0.08em; color:var(--text-dim);
+    text-align:right; line-height:1.6; pointer-events:none;
+  }
+
+  #decrypt-btn{
+    display:block; width:calc(100% - 32px); margin:0 16px 12px 16px;
+    padding:12px 10px; text-align:center; cursor:pointer;
+    background:linear-gradient(180deg, rgba(57,255,136,0.16), rgba(57,255,136,0.04));
+    border:1px solid rgba(57,255,136,0.4); color:var(--green);
+    font-family:'Orbitron', sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    transition: all 0.15s ease;
+    user-select:none;
+  }
+  #decrypt-btn:hover{ background:linear-gradient(180deg, rgba(57,255,136,0.3), rgba(57,255,136,0.08)); box-shadow:0 0 24px rgba(57,255,136,0.35); }
+  #decrypt-btn.disabled{ opacity:0.35; pointer-events:none; }
+
+  /* ---------- Document Viewer Panel ---------- */
+  #doc-panel {
+    position: fixed; top: 520px; left: 24px; width: 300px;
+    z-index: 10; background: rgba(10,20,32,0.82);
+    border: 1px solid var(--panel-edge);
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 30px rgba(0,229,255,0.08);
+    font-size: 11px; overflow: hidden;
+  }
+  #doc-panel .doc-head {
+    padding: 10px 14px; border-bottom: 1px solid var(--panel-edge);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(0,229,255,0.05);
+  }
+  #doc-panel .doc-head span {
+    font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 0.15em; color: var(--cyan);
+  }
+  #doc-panel .doc-body {
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; position: relative;
+  }
+  .doc-line {
+    display: flex; justify-content: space-between; align-items: center; line-height: 1.4;
+  }
+  .doc-lbl { color: var(--text-dim); text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.08em; }
+  .doc-val { color: var(--text); font-weight: 500; transition: color 0.3s ease; }
+  .doc-val.encrypted { color: var(--amber); text-shadow: 0 0 8px rgba(255,157,71,0.5); font-weight: 700; }
+  .doc-val.scrambling { color: var(--cyan); animation: scrambleFlash 0.1s infinite; }
+  
+  @keyframes scrambleFlash {
+    0% { opacity: 0.6; } 100% { opacity: 1; text-shadow: 0 0 10px var(--cyan); }
+  }
+  
+  .doc-scanner {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(0,229,255,0.3) 50%, transparent 100%);
+    background-size: 100% 40px; animation: scanAnim 1.2s infinite linear;
+  }
+  .doc-scanner.active { opacity: 1; }
+  @keyframes scanAnim { 0% { background-position: 0 -40px; } 100% { background-position: 0 100%; } }
+
+  /* ---------- Metadata Vault Panel ---------- */
+  #vault-panel {
+    position: fixed; top: 480px; right: 24px; width: 300px;
+    z-index: 10; background: rgba(10,20,32,0.82);
+    border: 1px solid var(--panel-edge);
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 30px rgba(0,229,255,0.08);
+    font-size: 11px;
+  }
+  #vault-panel .vlt-head {
+    padding: 10px 14px; border-bottom: 1px solid var(--panel-edge);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(57,255,136,0.05);
+  }
+  #vault-panel .vlt-head span {
+    font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 0.15em; color: var(--green);
+  }
+  #vault-panel .vlt-body {
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .vlt-line {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .vlt-lbl { color: var(--text-dim); text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.08em; }
+  .vlt-val { color: var(--green); font-size: 11px; word-break: break-all; }
+
+  @media (max-width: 720px){
+    #tvg-panel{ width:calc(100% - 32px); left:16px; top:96px; }
+    #doc-panel{ width:calc(100% - 32px); left:16px; top:540px; position:absolute; }
+    #settings-panel{ width:calc(100% - 32px); left:16px; top:750px; position:absolute; }
+    #vault-panel{ width:calc(100% - 32px); left:16px; top:1120px; position:absolute; }
+    #eyebrow h1{ font-size:16px; }
+    #hint{ display:none; }
+  }
+</style>
 </head>
 <body>
 
+<canvas id="scene-canvas"></canvas>
+<div id="vignette"></div>
+<div id="scanlines"></div>
+
+<div id="eyebrow">
+  <div class="kicker">Livre blanc — démonstration conceptuelle</div>
+  <h1>CHIFFREMENT HOLOGRAPHIQUE TEMPOREL</h1>
+</div>
+
+<div id="ram-label" class="world-label ram show">
+  <span class="wl-title">Matrice 3D — Mémoire vive (RAM)</span>
+  <span class="wl-sub">Fichier-clé restructuré en mémoire, jamais sur disque</span>
+</div>
+<div id="entry-label" class="world-label entry">
+  <span class="wl-title">Point d'entrée — Vecteur d'incidence</span>
+  <span class="wl-sub">Ingestion du fichier-clé (T.V.G.)</span>
+</div>
+<div id="exit-label" class="world-label exit">
+  <span class="wl-title">Point de sortie — Fichier d'arrivée</span>
+  <span class="wl-sub">Clé éphémère → Tier 3 (table chiffrée)</span>
+</div>
+
+<div id="tvg-panel">
+  <div class="panel-head">
+    <span>T.V.G. — GÉNÉRATEUR DE VECTEUR TEMPOREL</span>
+    <div class="dot" id="status-dot"></div>
+  </div>
+
+  <div class="field wide">
+    <div class="label">Timestamp haute précision</div>
+    <div class="value" id="f-timestamp">—</div>
+  </div>
+
+  <div class="field wide">
+    <div class="label">Empreinte environnementale (hash local)</div>
+    <div class="value" id="f-hash">—</div>
+  </div>
+
+  <div class="field">
+    <div class="label">Grain de sel composite</div>
+    <div class="coords">
+      <div><div class="label">X</div><div class="value" id="f-x">—</div></div>
+      <div><div class="label">Y</div><div class="value" id="f-y">—</div></div>
+      <div><div class="label">Z</div><div class="value" id="f-z">—</div></div>
+    </div>
+    <div class="angles">
+      <div><div class="label">α (alpha)</div><div class="value" id="f-alpha">—</div></div>
+      <div><div class="label">β (beta)</div><div class="value" id="f-beta">—</div></div>
+    </div>
+  </div>
+
+  <div id="fire-btn">1. CHIFFRER ET ANONYMISER LE DOSSIER</div>
+  <div id="decrypt-btn" class="disabled">2. DÉCHIFFRER (RESTAURATION SOUVERAINE)</div>
+  <div id="hacker-btn">SIMULER ATTAQUE QUANTIQUE (GROVER)</div>
+</div>
+
+<!-- DOCUMENT VIEWER -->
+<div id="doc-panel">
+  <div class="doc-head">
+    <span>DOSSIER MÉDICAL CONFIDENTIEL</span>
+    <div style="font-size:9px; color:var(--cyan); letter-spacing:0.1em; font-weight:700;">TIER 3</div>
+  </div>
+  <div class="doc-body">
+    <div class="doc-scanner" id="doc-scanner"></div>
+    <div class="doc-line">
+      <span class="doc-lbl">Patient</span>
+      <span class="doc-val" id="doc-patient">Jean Dupont</span>
+    </div>
+    <div class="doc-line">
+      <span class="doc-lbl">Pathologie</span>
+      <span class="doc-val" id="doc-disease">Diabète de Type 2</span>
+    </div>
+    <div class="doc-line">
+      <span class="doc-lbl">Localisation</span>
+      <span class="doc-val" id="doc-city">Paris (Île-de-France)</span>
+    </div>
+    <div class="doc-line">
+      <span class="doc-lbl">ID Réseau</span>
+      <span class="doc-val" id="doc-id">JD-75011</span>
+    </div>
+  </div>
+</div>
+
+<div id="hacker-modal">
+  <div class="hm-box">
+    <div class="hm-head">
+      <h3>TERMINAL D'ATTAQUE (CLOUD EXFILTRATION)</h3>
+    </div>
+    <div class="hm-body">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:11px;">
+        <!-- VECTEUR A -->
+        <div style="background:rgba(255,46,85,0.08); border:1px solid rgba(255,46,85,0.25); padding:10px; border-radius:4px;">
+          <div style="font-family:'Orbitron', sans-serif; font-weight:700; color:#ff5577; margin-bottom:6px; font-size:10px; letter-spacing:0.08em;">
+            VECTEUR A : FORCE BRUTE QUANTIQUE
+          </div>
+          <div style="color:#cfe8ff; line-height:1.6;">
+            Algorithme : <span style="color:#ff8899;">Grover Search (Parallèle)</span><br>
+            Qubits Actifs : <span style="color:#ff8899;">4096.00</span><br>
+            Itérations : <span style="color:#ff8899;">232 462 183</span><br>
+            Espace de clé : <span style="color:#ff2e55; font-weight:700;">Infini (NP-Hard)</span>
+          </div>
+        </div>
+
+        <!-- VECTEUR B -->
+        <div style="background:rgba(255,46,85,0.08); border:1px solid rgba(255,46,85,0.25); padding:10px; border-radius:4px;">
+          <div style="font-family:'Orbitron', sans-serif; font-weight:700; color:#ff5577; margin-bottom:6px; font-size:10px; letter-spacing:0.08em;">
+            VECTEUR B : ANALYSE SÉMANTIQUE IA
+          </div>
+          <div style="color:#cfe8ff; line-height:1.6;">
+            Loi de Zipf (Langage) : <span style="color:#ff8899;">0.01%</span><br>
+            Entropie Topologique : <span style="color:#ff8899;">99.99% (Bruit Blanc)</span><br>
+            Masque de Vernam : <span style="color:#ff2e55; font-weight:700;">ABSENT (Local Only)</span><br>
+            Statut IA : <span style="color:#ff2e55; font-weight:700;">Pattern Introuvable</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUTIN EXFILTRÉ -->
+      <div class="hm-payload">
+        <div style="font-family:'Orbitron', sans-serif; font-weight:700; color:#ff5577; margin-bottom:8px; font-size:10.5px; letter-spacing:0.08em;">
+          BUTIN EXFILTRÉ (TIER 2 - JOHN DOE PROTOCOL)
+        </div>
+        <div style="font-size:11px; line-height:1.7; color:#cfe8ff;">
+          &gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Dossier médical : Le patient <span style="color:#ff8899;" id="exfil-patient">#894-QX7</span> a subi <span style="color:#ff8899;" id="exfil-surgery">une angioplastie coronaire</span> à <span style="color:#ff8899;" id="exfil-loc">CHU Secteur Nord-4</span>. Anonymat total.<br>
+          &gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Contrat intercepté : <span style="color:#ff8899;" id="exfil-compA">KRONOS BioTech</span> fusionne avec <span style="color:#ff8899;" id="exfil-compB">SYNERGY Global</span>. Identités introuvables.<br>
+          &gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Jurisprudence : Affaire classée sous <span style="color:#ff8899;" id="exfil-dossier">#JUR-2026-8819X</span>. Aucune donnée personnelle exposée.
+        </div>
+      </div>
+
+      <div class="hm-status" id="hm-status">
+        ÉCHEC DU DÉCHIFFREMENT. COMPLEXITÉ NP-HARD. DONNÉES INEXPLOITABLES.
+      </div>
+
+      <div id="hm-close-btn">REVENIR AU MODE SÉCURISÉ (TIER 3 OK)</div>
+    </div>
+  </div>
+</div>
+
+<div id="settings-panel">
+  <div class="panel-head">
+    <span>CONTRÔLE ET PARAMÈTRES</span>
+  </div>
+
+  <div class="field">
+    <div class="label" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0;">
+      <span>Afficher les étiquettes 3D</span>
+      <input type="checkbox" id="cfg-labels" checked style="accent-color:var(--cyan); cursor:pointer;">
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
+      <span>Taille des marqueurs</span>
+      <span id="v-cfg-marker-size" style="color:var(--cyan);">1.0x</span>
+    </div>
+    <input type="range" id="cfg-marker-size" min="0.3" max="2.5" step="0.1" value="1.0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
+  </div>
+
+  <div class="field">
+    <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
+      <span>Taille des points (glyphes)</span>
+      <span id="v-cfg-point-size" style="color:var(--cyan);">1.0x</span>
+    </div>
+    <input type="range" id="cfg-point-size" min="0.4" max="3.0" step="0.1" value="1.0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
+  </div>
+
+  <div class="field">
+    <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
+      <span>Vitesse rotation matrice</span>
+      <span id="v-cfg-rot-speed" style="color:var(--cyan);">1.0x</span>
+    </div>
+    <input type="range" id="cfg-rot-speed" min="0" max="3.0" step="0.1" value="1.0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
+  </div>
+
+  <div class="field">
+    <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
+      <span>Nombre de virages (laser)</span>
+      <span id="v-cfg-turns" style="color:var(--cyan);">Auto</span>
+    </div>
+    <input type="range" id="cfg-turns" min="0" max="15" step="1" value="0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
+  </div>
+</div>
+
+<!-- METADATA VAULT -->
+<div id="vault-panel">
+  <div class="vlt-head">
+    <span>COFFRE-FORT MÉTADONNÉES (TIER 3)</span>
+  </div>
+  <div class="vlt-body">
+    <div class="vlt-line">
+      <span class="vlt-lbl">Statut</span>
+      <span class="vlt-val" id="vlt-status" style="color:var(--text-dim);">[Aucune métadonnée]</span>
+    </div>
+    <div class="vlt-line">
+      <span class="vlt-lbl">Timestamp</span>
+      <span class="vlt-val" id="vlt-time">—</span>
+    </div>
+    <div class="vlt-line">
+      <span class="vlt-lbl">Vecteur XYZ</span>
+      <span class="vlt-val" id="vlt-coords">—</span>
+    </div>
+    <div class="vlt-line">
+      <span class="vlt-lbl">Angles α / β</span>
+      <span class="vlt-val" id="vlt-angles">—</span>
+    </div>
+  </div>
+</div>
+
+<div id="key-bar">
+  <div class="kb-label">Clé éphémère (One-Time Pad — Vernam)</div>
+  <div class="kb-value" id="key-value">—</div>
+  <div id="key-purge-status" style="font-size:10px; letter-spacing:0.12em; color:var(--amber); margin-top:6px; font-weight:700; opacity:0; transition:opacity 0.3s ease;">
+    ⚡ PURGE IMMÉDIATE DE LA RAM (WIPED) — AUCUNE CLÉ STOCKÉE SUR DISQUE
+  </div>
+</div>
+
+<div id="hint">GLISSER — pivoter la caméra&nbsp;·&nbsp;MOLETTE — zoomer<br>Matrice d'entropie 3D — <span id="glyph-count">—</span> caractères en suspension<br><span style="color:var(--cyan); opacity:0.85;">Chiffre de Vernam (OTP) : Clé 100% éphémère purgée de la RAM après tir · Déchiffrement par régénération à la volée</span></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof THREE === 'undefined') {
+    document.body.innerHTML = `<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      background:#050b14;color:#cfe8ff;font-family:monospace;text-align:center;padding:40px;">
+      <div>
+        <h2 style="color:#ff9d47;margin-bottom:12px;">Bibliothèque Three.js non chargée</h2>
+        <p>Les scripts CDN (cdnjs.cloudflare.com / cdn.jsdelivr.net) n'ont pas pu être chargés.<br>
+        Vérifiez votre connexion internet ou un bloqueur de scripts/publicités,<br>
+        puis rechargez la page.</p>
+      </div>
+    </div>`;
+  }
+});
+</script>
+
+<script>
+// Scripts classiques (pas de type="module") : fonctionne aussi bien en
+// file:// (double-clic) que servi depuis un serveur local — pas de risque
+// lié aux import maps / CORS sur les modules ES.
+
+/* =========================================================================
+   CHIFFREMENT HOLOGRAPHIQUE TEMPOREL — démonstration WebGL
+   -------------------------------------------------------------------------
+   1. Une matrice cristalline contient un nuage de milliers de glyphes
+      (source d'entropie topologique).
+   2. Le panneau T.V.G. affiche en continu un "grain de sel composite" :
+      timestamp micro-seconde, hash d'environnement, coordonnées + angles.
+   3. Au clic, ces valeurs se figent, un faisceau laser traverse la matrice
+      selon ce vecteur, et les glyphes interceptés deviennent la clé.
+   ========================================================================= */
+
+// ---------------------------------------------------------------- CONSTANTS
+const CUBE_SIZE   = 9;                 // edge length of the crystal cube
+const GLYPH_COUNT = 4200;              // "thousands of characters"
+const GLYPH_SET   = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*+=/?";
+const ATLAS_COLS  = 8;                 // atlas grid for the glyph texture
+const ATLAS_ROWS  = Math.ceil(GLYPH_SET.length / ATLAS_COLS);
+const HIT_RADIUS  = 0.34;              // distance threshold for laser interception
+
+document.getElementById('glyph-count').textContent = GLYPH_COUNT.toLocaleString('fr-FR');
+
+// ---------------------------------------------------------------- RENDERER
+const canvas = document.getElementById('scene-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x050b14, 1);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x050b14, 0.028);
+
+const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(13, 9, 16);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 8;
+controls.maxDistance = 40;
+controls.target.set(0, 0, 0);
+
+// Soft ambient + a cold rim light so the crystal edges read in 3D
+scene.add(new THREE.AmbientLight(0x1a3a4a, 1.2));
+const rim = new THREE.PointLight(0x00e5ff, 2.2, 60);
+rim.position.set(10, 12, 10);
+scene.add(rim);
+
+// Everything that must share the cube's slow rotation lives in one group,
+// so laser/point collisions are always computed in a stable local frame.
+const cubeGroup = new THREE.Group();
+scene.add(cubeGroup);
+
+// ---------------------------------------------------------------- CRYSTAL CUBE
+const cubeGeo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+const cubeMat = new THREE.MeshPhysicalMaterial({
+  color: 0x0a2a3a,
+  transparent: true,
+  opacity: 0.07,
+  roughness: 0.15,
+  metalness: 0.1,
+  transmission: 0.6,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+});
+const crystal = new THREE.Mesh(cubeGeo, cubeMat);
+cubeGroup.add(crystal);
+
+const edges = new THREE.LineSegments(
+  new THREE.EdgesGeometry(cubeGeo),
+  new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.35 })
+);
+cubeGroup.add(edges);
+
+// ---------------------------------------------------------------- GLYPH ATLAS TEXTURE
+function buildGlyphAtlas() {
+  const cell = 64;
+  const canvasEl = document.createElement('canvas');
+  canvasEl.width = ATLAS_COLS * cell;
+  canvasEl.height = ATLAS_ROWS * cell;
+  const ctx = canvasEl.getContext('2d');
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  ctx.font = `600 ${cell * 0.62}px 'JetBrains Mono', monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(255,255,255,0.9)';
+  ctx.shadowBlur = 10;
+  for (let i = 0; i < GLYPH_SET.length; i++) {
+    const col = i % ATLAS_COLS;
+    const row = Math.floor(i / ATLAS_COLS);
+    ctx.fillText(GLYPH_SET[i], col * cell + cell / 2, row * cell + cell / 2 + 2);
+  }
+  const tex = new THREE.CanvasTexture(canvasEl);
+  tex.needsUpdate = true;
+  return tex;
+}
+const glyphAtlas = buildGlyphAtlas();
+
+// ---------------------------------------------------------------- ENTROPY POINT CLOUD (custom shader)
+const positions   = new Float32Array(GLYPH_COUNT * 3);
+const baseColors  = new Float32Array(GLYPH_COUNT * 3);
+const currColors  = new Float32Array(GLYPH_COUNT * 3);
+const sizes       = new Float32Array(GLYPH_COUNT);
+const baseSizes   = new Float32Array(GLYPH_COUNT);
+const hitSizes    = new Float32Array(GLYPH_COUNT);
+let lastInterceptedIdx = new Set();
+const charIndex   = new Float32Array(GLYPH_COUNT);
+const glyphOf     = new Array(GLYPH_COUNT); // keep the literal character per point
+
+const DEFAULT_COLOR = new THREE.Color(0x6fb8ff);
+const HALF = CUBE_SIZE / 2 - 0.4;
+
+for (let i = 0; i < GLYPH_COUNT; i++) {
+  positions[i * 3 + 0] = (Math.random() * 2 - 1) * HALF;
+  positions[i * 3 + 1] = (Math.random() * 2 - 1) * HALF;
+  positions[i * 3 + 2] = (Math.random() * 2 - 1) * HALF;
+
+  DEFAULT_COLOR.toArray(baseColors, i * 3);
+  DEFAULT_COLOR.toArray(currColors, i * 3);
+
+  const sz = 0.16 + Math.random() * 0.10;
+  sizes[i] = sz;
+  baseSizes[i] = sz;
+
+  const gi = Math.floor(Math.random() * GLYPH_SET.length);
+  charIndex[i] = gi;
+  glyphOf[i] = GLYPH_SET[gi];
+}
+
+const pointsGeo = new THREE.BufferGeometry();
+pointsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+pointsGeo.setAttribute('color', new THREE.BufferAttribute(currColors, 3));
+pointsGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+pointsGeo.setAttribute('charIndex', new THREE.BufferAttribute(charIndex, 1));
+
+const pointsMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uAtlas: { value: glyphAtlas },
+    uCols: { value: ATLAS_COLS },
+    uRows: { value: ATLAS_ROWS },
+    uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+  },
+  vertexShader: `
+    attribute float size;
+    attribute float charIndex;
+    varying vec3 vColor;
+    varying float vChar;
+    void main(){
+      vColor = color;
+      vChar = charIndex;
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = size * 420.0 / -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D uAtlas;
+    uniform float uCols;
+    uniform float uRows;
+    varying vec3 vColor;
+    varying float vChar;
+    void main(){
+      float col = mod(vChar, uCols);
+      float row = floor(vChar / uCols);
+      vec2 cell = vec2(1.0 / uCols, 1.0 / uRows);
+      vec2 uv = gl_PointCoord * cell + vec2(col * cell.x, row * cell.y);
+      // flip V because canvas texture Y is inverted relative to atlas row order
+      uv.y = (row * cell.y) + cell.y - (gl_PointCoord.y * cell.y);
+      vec4 tex = texture2D(uAtlas, uv);
+      if (tex.a < 0.12) discard;
+      gl_FragColor = vec4(vColor, tex.a);
+    }
+  `,
+  vertexColors: true,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+
+const glyphCloud = new THREE.Points(pointsGeo, pointsMat);
+cubeGroup.add(glyphCloud);
+
+// ---------------------------------------------------------------- LASER BEAM (chemin labyrinthique)
+const MAX_PATH_POINTS = 40; // headroom for entry + interior turns + exit
+const laserPositions = new Float32Array(MAX_PATH_POINTS * 3);
+const laserGeo = new THREE.BufferGeometry();
+const laserPosAttr = new THREE.BufferAttribute(laserPositions, 3);
+laserPosAttr.setUsage(THREE.DynamicDrawUsage);
+laserGeo.setAttribute('position', laserPosAttr);
+laserGeo.setDrawRange(0, 0);
+const laserMat = new THREE.LineBasicMaterial({
+  color: 0xbdffd6, transparent: true, opacity: 0.0, linewidth: 2,
+});
+const laserLine = new THREE.Line(laserGeo, laserMat);
+cubeGroup.add(laserLine);
+
+// Two nested glow tubes (bright core + soft halo) around the revealed path —
+// a cheap stand-in for a bloom pass, kept a touch brighter/thicker for visibility.
+const glowMatInner = new THREE.MeshBasicMaterial({ color: 0x39ff88, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false });
+const glowMatOuter = new THREE.MeshBasicMaterial({ color: 0x39ff88, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false });
+let glowTubeInner = null;
+let glowTubeOuter = null;
+
+function buildTubeFromPoints(points, radius) {
+  const curve = new THREE.CurvePath();
+  for (let i = 0; i < points.length - 1; i++) {
+    curve.add(new THREE.LineCurve3(points[i], points[i + 1]));
+  }
+  const tubularSegments = Math.max(2, (points.length - 1) * 4);
+  return new THREE.TubeGeometry(curve, tubularSegments, radius, 8, false);
+}
+
+function rebuildGlowTubes(points) {
+  if (glowTubeInner) { cubeGroup.remove(glowTubeInner); glowTubeInner.geometry.dispose(); glowTubeInner = null; }
+  if (glowTubeOuter) { cubeGroup.remove(glowTubeOuter); glowTubeOuter.geometry.dispose(); glowTubeOuter = null; }
+  if (points.length < 2) return;
+  glowTubeOuter = new THREE.Mesh(buildTubeFromPoints(points, 0.24), glowMatOuter);
+  glowTubeInner = new THREE.Mesh(buildTubeFromPoints(points, 0.12), glowMatInner);
+  cubeGroup.add(glowTubeOuter, glowTubeInner);
+}
+
+// ---------------------------------------------------------------- ENTRY / EXIT MARKERS
+// Small glowing beacons (+ halo) placed at the laser's entry and exit points,
+// with HTML labels projected from their 3D position onto the screen.
+function makeMarker(color) {
+  const group = new THREE.Group();
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(0.24, 16, 16),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(0.60, 16, 16),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  group.add(core, halo);
+  group.userData.core = core;
+  group.userData.halo = halo;
+  return group;
+}
+const entryMarker = makeMarker(0x00e5ff);
+const exitMarker  = makeMarker(0x39ff88);
+cubeGroup.add(entryMarker, exitMarker);
+
+// ---------------------------------------------------------------- QUANTUM GROVER SWARM (MODE HACKER)
+const SWARM_COUNT = 350;
+const swarmPositions = new Float32Array(SWARM_COUNT * 6);
+const swarmGeo = new THREE.BufferGeometry();
+swarmGeo.setAttribute('position', new THREE.BufferAttribute(swarmPositions, 3));
+const swarmMat = new THREE.LineBasicMaterial({
+  color: 0xff2e55,
+  transparent: true,
+  opacity: 0.85,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const hackerSwarm = new THREE.LineSegments(swarmGeo, swarmMat);
+hackerSwarm.visible = false;
+cubeGroup.add(hackerSwarm);
+
+function updateHackerSwarm() {
+  const bound = HALF * 0.95;
+  const attr = swarmGeo.attributes.position;
+  for (let i = 0; i < SWARM_COUNT; i++) {
+    const x1 = (Math.random() * 2 - 1) * bound;
+    const y1 = (Math.random() * 2 - 1) * bound;
+    const z1 = (Math.random() * 2 - 1) * bound;
+    const len = 0.6 + Math.random() * 2.4;
+    const dx = (Math.random() * 2 - 1);
+    const dy = (Math.random() * 2 - 1);
+    const dz = (Math.random() * 2 - 1);
+    const norm = Math.hypot(dx, dy, dz) || 1;
+    
+    attr.setXYZ(i * 2, x1, y1, z1);
+    attr.setXYZ(i * 2 + 1, x1 + (dx / norm) * len, y1 + (dy / norm) * len, z1 + (dz / norm) * len);
+  }
+  attr.needsUpdate = true;
+}
+
+const ramLabelPoint = new THREE.Vector3(0, CUBE_SIZE / 2 + 0.7, 0); // fixed caption above the crystal
+const _projScratch = new THREE.Vector3();
+
+function projectLocalToScreen(localVec3, el) {
+  _projScratch.copy(localVec3).applyMatrix4(cubeGroup.matrixWorld).project(camera);
+  const inFront = _projScratch.z < 1;
+  el.style.left = ((_projScratch.x * 0.5 + 0.5) * window.innerWidth) + 'px';
+  el.style.top  = ((-_projScratch.y * 0.5 + 0.5) * window.innerHeight) + 'px';
+  el.style.visibility = inFront ? 'visible' : 'hidden';
+}
+
+const ramLabelEl = document.getElementById('ram-label');
+const entryLabelEl = document.getElementById('entry-label');
+const exitLabelEl = document.getElementById('exit-label');
+let markersActive = false;
+
+// ---------------------------------------------------------------- SLOW AMBIENT ROTATION
+let baseRotSpeed = 0.0016;
+
+
+
+// ============================================================================
+//  T.V.G. — live "grain de sel composite" readout
+// ============================================================================
+const elTimestamp = document.getElementById('f-timestamp');
+const elHash      = document.getElementById('f-hash');
+const elX = document.getElementById('f-x');
+const elY = document.getElementById('f-y');
+const elZ = document.getElementById('f-z');
+const elAlpha = document.getElementById('f-alpha');
+const elBeta  = document.getElementById('f-beta');
+const statusDot = document.getElementById('status-dot');
+const fireBtn = document.getElementById('fire-btn');
+const keyBar = document.getElementById('key-bar');
+const keyValueEl = document.getElementById('key-value');
+
+let frozen = false;
+let liveVector = null; // last live-computed vector, used to freeze on click
+
+function hexHash(seed) {
+  let s = '';
+  for (let i = 0; i < 16; i++) {
+    s += Math.floor(((Math.sin(seed * (i + 1) * 12.9898) * 43758.5453) % 1 + 1) % 1 * 16).toString(16);
+  }
+  return '0x' + s;
+}
+
+function formatTimestamp(d) {
+  const pad = (n, l = 2) => String(n).padStart(l, '0');
+  const micros = pad(Math.floor((performance.now() % 1) * 999999), 6);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ` +
+         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${micros}`;
+}
+
+function computeLiveVector() {
+  const t = performance.now();
+  const x = (Math.sin(t * 0.0013) * 3.2).toFixed(3);
+  const y = (Math.cos(t * 0.0017) * 3.2).toFixed(3);
+  const z = (Math.sin(t * 0.0009 + 1.7) * 3.2).toFixed(3);
+  const alpha = ((t * 0.11) % 360).toFixed(2);
+  const beta  = ((t * 0.07 + 90) % 360).toFixed(2);
+  return { x: +x, y: +y, z: +z, alpha: +alpha, beta: +beta, t };
+}
+
+function tickTVG() {
+  if (frozen) return;
+  const now = new Date();
+  elTimestamp.textContent = formatTimestamp(now);
+  elHash.textContent = hexHash(performance.now());
+  liveVector = computeLiveVector();
+  elX.textContent = liveVector.x.toFixed(3);
+  elY.textContent = liveVector.y.toFixed(3);
+  elZ.textContent = liveVector.z.toFixed(3);
+  elAlpha.textContent = liveVector.alpha.toFixed(2) + '°';
+  elBeta.textContent = liveVector.beta.toFixed(2) + '°';
+}
+
+// ============================================================================
+//  LASER FIRE SEQUENCE
+// ============================================================================
+let firing = false;
+
+function resetPointColors() {
+  for (let i = 0; i < GLYPH_COUNT; i++) {
+    baseColors[i*3] = DEFAULT_COLOR.r; baseColors[i*3+1] = DEFAULT_COLOR.g; baseColors[i*3+2] = DEFAULT_COLOR.b;
+  }
+  pointsGeo.attributes.color.array.set(baseColors);
+  pointsGeo.attributes.color.needsUpdate = true;
+
+  sizes.set(baseSizes);
+  pointsGeo.attributes.size.needsUpdate = true;
+  lastInterceptedIdx.clear();
+}
+
+// Reusable scratch vectors to avoid allocating thousands of Vector3 per frame
+const _ab = new THREE.Vector3();
+const _ap = new THREE.Vector3();
+const _closest = new THREE.Vector3();
+const _pt = new THREE.Vector3();
+
+function closestPointOnSegment(p, a, b, target) {
+  _ab.subVectors(b, a);
+  const denom = _ab.lengthSq() || 1e-6;
+  const t = THREE.MathUtils.clamp(_ap.subVectors(p, a).dot(_ab) / denom, 0, 1);
+  return target.copy(a).addScaledVector(_ab, t);
+}
+
+// Finds where the segment from `outside` to `inside` crosses the crystal's
+// cubic boundary (±half on each axis) — used to anchor the entry/exit
+// markers right on the cube surface instead of far out in empty space.
+function cubeSurfaceCrossing(outside, inside, half) {
+  const dir = new THREE.Vector3().subVectors(inside, outside);
+  let tmin = 0, tmax = 1;
+  const axes = ['x', 'y', 'z'];
+  for (let i = 0; i < 3; i++) {
+    const axis = axes[i];
+    const o = outside[axis], d = dir[axis];
+    if (Math.abs(d) < 1e-9) {
+      if (o < -half || o > half) return null;
+      continue;
+    }
+    let t1 = (-half - o) / d;
+    let t2 = (half - o) / d;
+    if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+    tmin = Math.max(tmin, t1);
+    tmax = Math.min(tmax, t2);
+    if (tmin > tmax) return null;
+  }
+  return new THREE.Vector3().copy(outside).addScaledVector(dir, tmin);
+}
+
+let savedVector = null;
+let isEncrypted = false;
+
+function scrambleText(element, targetText, duration = 800) {
+  if (!element) return;
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+  const start = performance.now();
+  element.classList.add('scrambling');
+  
+  function frame(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    if (progress < 1) {
+      let scrambled = '';
+      for (let i = 0; i < targetText.length; i++) {
+        if (Math.random() < progress) {
+          scrambled += targetText[i];
+        } else {
+          scrambled += chars[Math.floor(Math.random() * chars.length)];
+        }
+      }
+      element.textContent = scrambled;
+      requestAnimationFrame(frame);
+    } else {
+      element.textContent = targetText;
+      element.classList.remove('scrambling');
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function scrambleDocToEncrypted() {
+  const scanner = document.getElementById('doc-scanner');
+  if (scanner) {
+    scanner.classList.add('active');
+    setTimeout(() => scanner.classList.remove('active'), 1800);
+  }
+  
+  const elPatient = document.getElementById('doc-patient');
+  const elDisease = document.getElementById('doc-disease');
+  const elCity = document.getElementById('doc-city');
+  const elId = document.getElementById('doc-id');
+
+  if (elPatient) { scrambleText(elPatient, '[CLIENT_ID]'); elPatient.classList.add('encrypted'); }
+  if (elDisease) { scrambleText(elDisease, '[MALADIE_X]'); elDisease.classList.add('encrypted'); }
+  if (elCity) { scrambleText(elCity, '[LOC_A]'); elCity.classList.add('encrypted'); }
+  if (elId) { scrambleText(elId, '[ID_OBFUSCATED]'); elId.classList.add('encrypted'); }
+}
+
+function scrambleDocToPlain() {
+  const scanner = document.getElementById('doc-scanner');
+  if (scanner) {
+    scanner.classList.add('active');
+    setTimeout(() => scanner.classList.remove('active'), 1800);
+  }
+
+  const elPatient = document.getElementById('doc-patient');
+  const elDisease = document.getElementById('doc-disease');
+  const elCity = document.getElementById('doc-city');
+  const elId = document.getElementById('doc-id');
+
+  if (elPatient) { scrambleText(elPatient, 'Jean Dupont'); elPatient.classList.remove('encrypted'); }
+  if (elDisease) { scrambleText(elDisease, 'Diabète de Type 2'); elDisease.classList.remove('encrypted'); }
+  if (elCity) { scrambleText(elCity, 'Paris (Île-de-France)'); elCity.classList.remove('encrypted'); }
+  if (elId) { scrambleText(elId, 'JD-75011'); elId.classList.remove('encrypted'); }
+}
+
+function updateVaultUI(vec) {
+  const vltStatus = document.getElementById('vlt-status');
+  const vltTime   = document.getElementById('vlt-time');
+  const vltCoords = document.getElementById('vlt-coords');
+  const vltAngles = document.getElementById('vlt-angles');
+
+  if (vltStatus) { vltStatus.textContent = 'SAUVEGARDÉ'; vltStatus.style.color = 'var(--green)'; }
+  if (vltTime) vltTime.textContent = formatTimestamp(new Date(vec.t));
+  if (vltCoords) vltCoords.textContent = `${vec.x.toFixed(2)}, ${vec.y.toFixed(2)}, ${vec.z.toFixed(2)}`;
+  if (vltAngles) vltAngles.textContent = `${vec.alpha.toFixed(1)}°, ${vec.beta.toFixed(1)}°`;
+}
+
+function fireLaser() {
+  if (firing || modeHacker) return;
+  firing = true;
+  frozen = true;
+  statusDot.classList.add('frozen');
+  fireBtn.classList.add('disabled');
+  const decryptBtn = document.getElementById('decrypt-btn');
+  if (decryptBtn) decryptBtn.classList.add('disabled');
+
+  keyBar.classList.remove('show');
+  keyValueEl.style.color = 'var(--green)';
+  const purgeEl = document.getElementById('key-purge-status');
+  if (purgeEl) purgeEl.style.opacity = '0';
+  resetPointColors();
+
+  // Save historical vector for Vault
+  savedVector = Object.assign({}, liveVector || computeLiveVector());
+  updateVaultUI(savedVector);
+  isEncrypted = true;
+
+  // Anonymize document text
+  scrambleDocToEncrypted();
+
+  // Hide markers & labels at start of new generation
+  markersActive = false;
+  entryLabelEl.classList.remove('show');
+  exitLabelEl.classList.remove('show');
+  entryMarker.userData.core.material.opacity = 0;
+  entryMarker.userData.halo.material.opacity = 0;
+  exitMarker.userData.core.material.opacity = 0;
+  exitMarker.userData.halo.material.opacity = 0;
+  currentHoverOpacity = 0;
+
+  try {
+    startBeamSequence(savedVector);
+  } catch (err) {
+    console.error('[T.V.G.] Erreur pendant le tir laser :', err);
+    firing = false;
+    frozen = false;
+    statusDot.classList.remove('frozen');
+    fireBtn.classList.remove('disabled');
+    if (decryptBtn && savedVector) decryptBtn.classList.remove('disabled');
+  }
+}
+
+function decryptDocument() {
+  if (firing || modeHacker || !savedVector) return;
+  firing = true;
+  frozen = true;
+  statusDot.classList.add('frozen');
+  fireBtn.classList.add('disabled');
+  const decryptBtn = document.getElementById('decrypt-btn');
+  if (decryptBtn) decryptBtn.classList.add('disabled');
+
+  keyBar.classList.remove('show');
+  keyValueEl.style.color = 'var(--green)';
+  const purgeEl = document.getElementById('key-purge-status');
+  if (purgeEl) purgeEl.style.opacity = '0';
+  resetPointColors();
+
+  // Restore document text in clear
+  scrambleDocToPlain();
+
+  // Hide markers & labels at start of new generation
+  markersActive = false;
+  entryLabelEl.classList.remove('show');
+  exitLabelEl.classList.remove('show');
+  entryMarker.userData.core.material.opacity = 0;
+  entryMarker.userData.halo.material.opacity = 0;
+  exitMarker.userData.core.material.opacity = 0;
+  exitMarker.userData.halo.material.opacity = 0;
+  currentHoverOpacity = 0;
+
+  try {
+    startBeamSequence(savedVector);
+  } catch (err) {
+    console.error('[T.V.G.] Erreur pendant le déchiffrement :', err);
+    firing = false;
+    frozen = false;
+    statusDot.classList.remove('frozen');
+    fireBtn.classList.remove('disabled');
+    if (decryptBtn && savedVector) decryptBtn.classList.remove('disabled');
+  }
+}
+
+// Deterministic PRNG seeded from the frozen vector, so each shot's maze is
+// unique to its "grain de sel composite" yet reproducible from it.
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Builds an outside-in-outside path with several random right-angle turns
+// inside the crystal — a labyrinthine route rather than a straight shot.
+function buildLabyrinthPath(vec) {
+  const seed = (Math.floor(vec.t * 1000) ^ Math.floor(vec.x * 1000) ^
+                Math.floor(vec.y * 997) ^ Math.floor(vec.z * 613) ^
+                Math.floor(vec.alpha * 31) ^ Math.floor(vec.beta * 17)) | 0;
+  const rng = mulberry32(seed);
+
+  const alphaRad = THREE.MathUtils.degToRad(vec.alpha);
+  const betaRad  = THREE.MathUtils.degToRad(vec.beta);
+  const entryDir = new THREE.Vector3(
+    Math.sin(betaRad) * Math.cos(alphaRad),
+    Math.cos(betaRad),
+    Math.sin(betaRad) * Math.sin(alphaRad)
+  ).normalize();
+
+  const bound = HALF * 0.92;
+  let current = new THREE.Vector3(
+    THREE.MathUtils.clamp(vec.x * 0.7, -bound, bound),
+    THREE.MathUtils.clamp(vec.y * 0.7, -bound, bound),
+    THREE.MathUtils.clamp(vec.z * 0.7, -bound, bound)
+  );
+
+  const interior = [current.clone()];
+  const turnsCfg = parseInt(document.getElementById('cfg-turns').value);
+  const numTurns = turnsCfg === 0 ? (6 + Math.floor(rng() * 5)) : turnsCfg;
+  const axes = ['x', 'y', 'z'];
+  let prevAxis = -1;
+
+  for (let i = 0; i < numTurns; i++) {
+    let axis;
+    do { axis = Math.floor(rng() * 3); } while (axis === prevAxis);
+    prevAxis = axis;
+    const step = bound * 0.35 + rng() * bound * 0.55;
+    const signed = (rng() < 0.5 ? -1 : 1) * step;
+    const next = current.clone();
+    next[axes[axis]] = THREE.MathUtils.clamp(current[axes[axis]] + signed, -bound, bound);
+    interior.push(next);
+    current = next;
+  }
+
+  const startsInside = rng() < 0.5;
+  const endsInside = rng() < 0.5;
+
+  const path = [];
+  if (!startsInside) {
+    const reach = CUBE_SIZE * 1.3;
+    const entryOutside = new THREE.Vector3().copy(interior[0]).addScaledVector(entryDir, -reach);
+    path.push(entryOutside);
+  }
+  path.push(...interior);
+  if (!endsInside) {
+    const reach = CUBE_SIZE * 1.3;
+    const last = interior[interior.length - 1];
+    const secondLast = interior.length > 1 ? interior[interior.length - 2] : interior[0];
+    const exitDir = new THREE.Vector3().subVectors(last, secondLast);
+    if (exitDir.lengthSq() < 1e-6) exitDir.copy(entryDir); else exitDir.normalize();
+    const exitOutside = new THREE.Vector3().copy(last).addScaledVector(exitDir, reach);
+    path.push(exitOutside);
+  }
+
+  return path.slice(0, MAX_PATH_POINTS);
+}
+
+function startBeamSequence(vecOverride) {
+  const vec = vecOverride || liveVector || computeLiveVector(); // frozen "grain de sel composite"
+  const pathPoints = buildLabyrinthPath(vec);
+
+  const segLengths = [];
+  let totalLength = 0;
+  for (let i = 0; i < pathPoints.length - 1; i++) {
+    const len = pathPoints[i].distanceTo(pathPoints[i + 1]);
+    segLengths.push(len);
+    totalLength += len;
+  }
+
+  laserMat.opacity = 0.95;
+  glowMatInner.opacity = 0.6;
+  glowMatOuter.opacity = 0.24;
+
+  // Reveal the entry/exit beacons at the path's outer points, with their labels
+  // Anchor the entry/exit beacons where the beam actually pierces the
+  // crystal surface, not at its far outside endpoints — keeps the labels
+  // right on the cube instead of floating off in empty space.
+  const cubeHalf = CUBE_SIZE / 2;
+  const isStartInside = Math.max(Math.abs(pathPoints[0].x), Math.abs(pathPoints[0].y), Math.abs(pathPoints[0].z)) <= cubeHalf * 0.99;
+  const entrySurface = isStartInside 
+    ? pathPoints[0].clone() 
+    : (cubeSurfaceCrossing(pathPoints[0], pathPoints[1], cubeHalf) || pathPoints[1]);
+
+  const lastPoint = pathPoints[pathPoints.length - 1];
+  const isEndInside = Math.max(Math.abs(lastPoint.x), Math.abs(lastPoint.y), Math.abs(lastPoint.z)) <= cubeHalf * 0.99;
+  const exitSurface = isEndInside
+    ? lastPoint.clone()
+    : (cubeSurfaceCrossing(lastPoint, pathPoints[pathPoints.length - 2], cubeHalf) || pathPoints[pathPoints.length - 2]);
+
+
+
+  entryMarker.position.copy(entrySurface);
+  exitMarker.position.copy(exitSurface);
+  entryMarker.userData.core.material.opacity = 0.95;
+  entryMarker.userData.halo.material.opacity = 0.35;
+  exitMarker.userData.core.material.opacity = 0.95;
+  exitMarker.userData.halo.material.opacity = 0.35;
+  markersActive = true;
+  entryLabelEl.classList.add('show');
+  exitLabelEl.classList.add('show');
+
+  const DURATION = 2000; // ms — a bit longer since the route winds through several turns
+  const t0 = performance.now();
+  const interceptedIdx = new Set();
+  const revealed = [];
+
+  function computeRevealed(distance) {
+    revealed.length = 0;
+    revealed.push(pathPoints[0]);
+    let remaining = distance;
+    for (let i = 0; i < segLengths.length; i++) {
+      const len = segLengths[i];
+      if (remaining >= len) {
+        revealed.push(pathPoints[i + 1]);
+        remaining -= len;
+      } else {
+        const t = len > 0 ? remaining / len : 0;
+        revealed.push(new THREE.Vector3().lerpVectors(pathPoints[i], pathPoints[i + 1], t));
+        break;
+      }
+    }
+  }
+
+  function animateBeam(now) {
+    const p = Math.min((now - t0) / DURATION, 1);
+    const eased = 1 - Math.pow(1 - p, 2.2);
+    computeRevealed(eased * totalLength);
+
+    for (let i = 0; i < revealed.length && i < MAX_PATH_POINTS; i++) {
+      laserPosAttr.setXYZ(i, revealed[i].x, revealed[i].y, revealed[i].z);
+    }
+    laserPosAttr.needsUpdate = true;
+    laserGeo.setDrawRange(0, Math.min(revealed.length, MAX_PATH_POINTS));
+    rebuildGlowTubes(revealed);
+
+    // Check interceptions against every revealed segment of the maze
+    for (let gi = 0; gi < GLYPH_COUNT; gi++) {
+      if (interceptedIdx.has(gi)) continue;
+      _pt.set(positions[gi * 3], positions[gi * 3 + 1], positions[gi * 3 + 2]);
+      for (let s = 0; s < revealed.length - 1; s++) {
+        closestPointOnSegment(_pt, revealed[s], revealed[s + 1], _closest);
+        if (_closest.distanceTo(_pt) < HIT_RADIUS) {
+          interceptedIdx.add(gi);
+          currColors[gi*3] = 0.22; currColors[gi*3+1] = 1.0; currColors[gi*3+2] = 0.53; // neon green
+          const baseHit = 0.45 + Math.random() * 0.12;
+          hitSizes[gi] = baseHit;
+          const pScale = parseFloat(document.getElementById('cfg-point-size').value);
+          sizes[gi] = baseHit * pScale;
+          break;
+        }
+      }
+    }
+    pointsGeo.attributes.color.array.set(currColors);
+    pointsGeo.attributes.color.needsUpdate = true;
+    pointsGeo.attributes.size.needsUpdate = true;
+
+    if (p < 1) {
+      requestAnimationFrame(animateBeam);
+    } else {
+      finishFiring(interceptedIdx);
+    }
+  }
+  requestAnimationFrame(animateBeam);
+}
+
+function finishFiring(interceptedIdx) {
+  // Order intercepted glyphs roughly by their position along the beam for a readable key
+  const ordered = Array.from(interceptedIdx).sort((a, b) => a - b);
+  let key = ordered.map(i => glyphOf[i]).join('').slice(0, 48);
+  if (!key) key = '(aucune interception — relancez le tir)';
+  keyValueEl.textContent = key;
+  keyBar.classList.add('show');
+  lastInterceptedIdx = interceptedIdx;
+
+  const purgeEl = document.getElementById('key-purge-status');
+  if (purgeEl) purgeEl.style.opacity = '0';
+
+  // Fade the beam out, then unlock the console for another shot and wipe key from RAM
+  const fadeStart = performance.now();
+  const laserStartOpacity = laserMat.opacity;
+  const innerStartOpacity = glowMatInner.opacity;
+  const outerStartOpacity = glowMatOuter.opacity;
+  function fade(now) {
+    const p = Math.min((now - fadeStart) / 900, 1);
+    laserMat.opacity = laserStartOpacity * (1 - p);
+    glowMatInner.opacity = innerStartOpacity * (1 - p);
+    glowMatOuter.opacity = outerStartOpacity * (1 - p);
+    if (p < 1) requestAnimationFrame(fade);
+    else {
+      firing = false;
+      frozen = false;
+      statusDot.classList.remove('frozen');
+      fireBtn.classList.remove('disabled');
+      const decryptBtn = document.getElementById('decrypt-btn');
+      if (decryptBtn && savedVector) decryptBtn.classList.remove('disabled');
+
+      // ONE-TIME PAD PURGE LOGIC (VERNAM)
+      if (purgeEl) {
+        purgeEl.style.opacity = '1';
+        setTimeout(() => {
+          keyValueEl.textContent = '000000000000000000000000000000000000000000000000 (RAM WIPED)';
+          keyValueEl.style.color = '#ff9d47';
+        }, 1200);
+      }
+    }
+  }
+  requestAnimationFrame(fade);
+}
+
+fireBtn.addEventListener('click', fireLaser);
+
+// ============================================================================
+//  HOVER PATH LOGIC
+// ============================================================================
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2(-9999, -9999);
+let currentHoverOpacity = 0;
+
+window.addEventListener('mousemove', (event) => {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+});
+
+// ============================================================================
+//  RENDER LOOP
+// ============================================================================
+function animate(now) {
+  requestAnimationFrame(animate);
+  tickTVG();
+  
+  const rotMultiplier = parseFloat(document.getElementById('cfg-rot-speed').value);
+  cubeGroup.rotation.y += baseRotSpeed * rotMultiplier;
+  cubeGroup.rotation.x += baseRotSpeed * 0.35 * rotMultiplier;
+
+  if (!firing && glowTubeOuter && glowTubeInner) {
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(glowTubeOuter);
+    const targetOpacity = intersects.length > 0 ? 1 : 0;
+    
+    currentHoverOpacity += (targetOpacity - currentHoverOpacity) * 0.15;
+    
+    laserMat.opacity = 0.95 * currentHoverOpacity;
+    glowMatInner.opacity = 0.6 * currentHoverOpacity;
+    glowMatOuter.opacity = 0.24 * currentHoverOpacity;
+
+    if (intersects.length > 0) {
+      canvas.style.cursor = 'pointer';
+    } else {
+      canvas.style.cursor = 'auto';
+    }
+  }
+
+  const showLabels = document.getElementById('cfg-labels').checked;
+  if (showLabels) {
+    projectLocalToScreen(ramLabelPoint, ramLabelEl);
+    ramLabelEl.classList.add('show');
+  } else {
+    ramLabelEl.classList.remove('show');
+  }
+
+  if (markersActive && showLabels) {
+    projectLocalToScreen(entryMarker.position, entryLabelEl);
+    projectLocalToScreen(exitMarker.position, exitLabelEl);
+    entryLabelEl.classList.add('show');
+    exitLabelEl.classList.add('show');
+  } else {
+    entryLabelEl.classList.remove('show');
+    exitLabelEl.classList.remove('show');
+  }
+
+  if (markersActive) {
+    const pulse = 1 + 0.12 * Math.sin(now * 0.006);
+    const scaleVal = parseFloat(document.getElementById('cfg-marker-size').value);
+    entryMarker.scale.setScalar(pulse * scaleVal);
+    exitMarker.scale.setScalar(pulse * scaleVal);
+  }
+
+  if (modeHacker) {
+    updateHackerSwarm();
+    const colors = pointsGeo.attributes.color.array;
+    for (let i = 0; i < 90; i++) {
+      const idx = Math.floor(Math.random() * GLYPH_COUNT);
+      colors[idx * 3 + 0] = 0.35 + Math.random() * 0.65;
+      colors[idx * 3 + 1] = Math.random() * 0.08;
+      colors[idx * 3 + 2] = Math.random() * 0.12;
+    }
+    pointsGeo.attributes.color.needsUpdate = true;
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+// ============================================================================
+//  SETTINGS PANEL EVENT LISTENERS
+// ============================================================================
+document.getElementById('cfg-marker-size').addEventListener('input', (e) => {
+  document.getElementById('v-cfg-marker-size').textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+});
+document.getElementById('cfg-point-size').addEventListener('input', (e) => {
+  const scale = parseFloat(e.target.value);
+  document.getElementById('v-cfg-point-size').textContent = scale.toFixed(1) + 'x';
+  if (lastInterceptedIdx) {
+    const sizeArray = pointsGeo.attributes.size.array;
+    for (let i of lastInterceptedIdx) {
+      sizeArray[i] = hitSizes[i] * scale;
+    }
+    pointsGeo.attributes.size.needsUpdate = true;
+  }
+});
+document.getElementById('cfg-rot-speed').addEventListener('input', (e) => {
+  document.getElementById('v-cfg-rot-speed').textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+});
+document.getElementById('cfg-turns').addEventListener('input', (e) => {
+  const val = parseInt(e.target.value);
+  document.getElementById('v-cfg-turns').textContent = val === 0 ? "Auto" : val;
+});
+
+// ============================================================================
+//  HACKER MODE & QUANTUM GROVER SIMULATION
+// ============================================================================
+let modeHacker = false;
+let hackerTimeout1 = null;
+let hackerTimeout2 = null;
+
+const hackerBtn = document.getElementById('hacker-btn');
+const hackerModal = document.getElementById('hacker-modal');
+const hmStatus = document.getElementById('hm-status');
+const hmCloseBtn = document.getElementById('hm-close-btn');
+
+const clientIds = ['#894-QX7', '#341-TK9', '#902-BL3', '#715-VM2', '#588-PR6'];
+const surgeries = ['une angioplastie coronaire', 'une arthroplastie du genou', 'une appendicectomie coelio', 'une résection hépatique', 'une neurochirurgie rachidienne'];
+const locations = ['CHU Secteur Nord-4', 'Clinique Val d\'Ouest', 'Hôpital Central Block-B', 'Institut Médical 12-A', 'Centre Hospitalier Sud-2'];
+const companiesA = ['KRONOS BioTech', 'AERIS Dynamics', 'NOVA Logistics', 'APEX Pharma', 'ORION Quantum'];
+const companiesB = ['SYNERGY Global', 'VERTIGO Corp', 'HELIX Systems', 'NEXUS Holding', 'SOLARIS Tech'];
+const dossiers = ['#JUR-2026-8819X', '#JUR-2025-4032B', '#JUR-2026-1194K', '#JUR-2024-9581Z', '#JUR-2026-7730M'];
+
+function getRandomItem(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function randomizeExfilData() {
+  const p = document.getElementById('exfil-patient');
+  const s = document.getElementById('exfil-surgery');
+  const l = document.getElementById('exfil-loc');
+  const ca = document.getElementById('exfil-compA');
+  const cb = document.getElementById('exfil-compB');
+  const d = document.getElementById('exfil-dossier');
+
+  if (p) p.textContent = getRandomItem(clientIds);
+  if (s) s.textContent = getRandomItem(surgeries);
+  if (l) l.textContent = getRandomItem(locations);
+  if (ca) ca.textContent = getRandomItem(companiesA);
+  if (cb) cb.textContent = getRandomItem(companiesB);
+  if (d) d.textContent = getRandomItem(dossiers);
+}
+
+function enterHackerMode() {
+  if (firing || modeHacker) return;
+  modeHacker = true;
+  randomizeExfilData();
+  document.body.classList.add('hacker-mode');
+  hackerSwarm.visible = true;
+  hmStatus.classList.remove('show');
+  hackerModal.classList.remove('show');
+  fireBtn.classList.add('disabled');
+
+  edges.material.color.setHex(0xff2e55);
+  crystal.material.color.setHex(0x3a0812);
+
+  const colors = pointsGeo.attributes.color.array;
+  for (let i = 0; i < GLYPH_COUNT; i++) {
+    colors[i * 3 + 0] = 0.35 + Math.random() * 0.55;
+    colors[i * 3 + 1] = 0.05 + Math.random() * 0.10;
+    colors[i * 3 + 2] = 0.08 + Math.random() * 0.15;
+  }
+  pointsGeo.attributes.color.needsUpdate = true;
+
+  hackerTimeout1 = setTimeout(() => {
+    if (modeHacker) hackerModal.classList.add('show');
+  }, 1800);
+
+  hackerTimeout2 = setTimeout(() => {
+    if (modeHacker) hmStatus.classList.add('show');
+  }, 3800);
+}
+
+function exitHackerMode() {
+  modeHacker = false;
+  document.body.classList.remove('hacker-mode');
+  hackerSwarm.visible = false;
+  hackerModal.classList.remove('show');
+  hmStatus.classList.remove('show');
+  fireBtn.classList.remove('disabled');
+
+  if (hackerTimeout1) clearTimeout(hackerTimeout1);
+  if (hackerTimeout2) clearTimeout(hackerTimeout2);
+
+  edges.material.color.setHex(0x00e5ff);
+  crystal.material.color.setHex(0x0a2a3a);
+  resetPointColors();
+}
+
+const decryptBtn = document.getElementById('decrypt-btn');
+if (decryptBtn) decryptBtn.addEventListener('click', decryptDocument);
+
+if (hackerBtn) hackerBtn.addEventListener('click', enterHackerMode);
+if (hmCloseBtn) hmCloseBtn.addEventListener('click', exitHackerMode);
+
+// ============================================================================
+//  RESIZE
+// ============================================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
 </body>
 </html>
