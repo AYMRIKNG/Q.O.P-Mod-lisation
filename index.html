@@ -78,10 +78,37 @@
     text-shadow:0 0 18px rgba(0,229,255,0.45);
   }
 
-  /* ---------- T.V.G side panel ---------- */
+  /* ---------- Sidebars Containers ---------- */
+  #left-sidebar {
+    position: fixed; top: 100px; left: 24px; width: 310px;
+    max-height: calc(100vh - 140px); z-index: 10;
+    display: flex; flex-direction: column; gap: 14px;
+    overflow-y: auto; overflow-x: hidden;
+    padding-right: 4px;
+  }
+  #right-sidebar {
+    position: fixed; top: 100px; right: 24px; width: 310px;
+    max-height: calc(100vh - 140px); z-index: 10;
+    display: flex; flex-direction: column; gap: 14px;
+    overflow-y: auto; overflow-x: hidden;
+    padding-left: 4px;
+  }
+  
+  /* Custom scrollbar for sidebars */
+  #left-sidebar::-webkit-scrollbar, #right-sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+  #left-sidebar::-webkit-scrollbar-thumb, #right-sidebar::-webkit-scrollbar-thumb {
+    background: var(--panel-edge); border-radius: 2px;
+  }
+
+  /* ---------- Side panels ---------- */
+  #tvg-panel, #doc-panel, #settings-panel, #vault-panel {
+    position: relative; top: auto; left: auto; right: auto; width: 100%;
+    flex-shrink: 0;
+  }
   #tvg-panel{
-    position:fixed; top:110px; left:24px; width:300px;
-    z-index:10; background:rgba(10,20,32,0.72);
+    background:rgba(10,20,32,0.72);
     border:1px solid var(--panel-edge);
     clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
     backdrop-filter: blur(6px);
@@ -97,10 +124,8 @@
   #tvg-panel .dot{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); }
   #tvg-panel .dot.frozen{ background:var(--amber); box-shadow:0 0 8px var(--amber); }
 
-  /* ---------- Settings side panel ---------- */
   #settings-panel{
-    position:fixed; top:110px; right:24px; width:300px;
-    z-index:10; background:rgba(10,20,32,0.72);
+    background:rgba(10,20,32,0.72);
     border:1px solid var(--panel-edge);
     clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
     backdrop-filter: blur(6px);
@@ -259,7 +284,7 @@
 
   /* ---------- Document Viewer Panel ---------- */
   #doc-panel {
-    position: fixed; top: 520px; left: 24px; width: 300px;
+    position: relative; width: 100%;
     z-index: 10; background: rgba(10,20,32,0.82);
     border: 1px solid var(--panel-edge);
     clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
@@ -300,7 +325,7 @@
 
   /* ---------- Metadata Vault Panel ---------- */
   #vault-panel {
-    position: fixed; top: 480px; right: 24px; width: 300px;
+    position: relative; width: 100%;
     z-index: 10; background: rgba(10,20,32,0.82);
     border: 1px solid var(--panel-edge);
     clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
@@ -325,13 +350,141 @@
   .vlt-lbl { color: var(--text-dim); text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.08em; }
   .vlt-val { color: var(--green); font-size: 11px; word-break: break-all; }
 
-  @media (max-width: 720px){
-    #tvg-panel{ width:calc(100% - 32px); left:16px; top:96px; }
-    #doc-panel{ width:calc(100% - 32px); left:16px; top:540px; position:absolute; }
-    #settings-panel{ width:calc(100% - 32px); left:16px; top:750px; position:absolute; }
-    #vault-panel{ width:calc(100% - 32px); left:16px; top:1120px; position:absolute; }
-    #eyebrow h1{ font-size:16px; }
-    #hint{ display:none; }
+  /* ---------- RESPONSIVE MOBILE STYLES ---------- */
+  @media (max-width: 860px) {
+    html, body {
+      overflow-y: auto !important;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    #scene-canvas {
+      position: fixed !important;
+      inset: 0;
+      width: 100vw !important;
+      height: 100vh !important;
+    }
+
+    #eyebrow {
+      top: 10px;
+      width: calc(100% - 24px);
+      padding: 0 12px;
+    }
+    #eyebrow h1 {
+      font-size: 14px;
+      letter-spacing: 0.1em;
+      margin-top: 2px;
+    }
+    #eyebrow .kicker {
+      font-size: 8.5px;
+      letter-spacing: 0.25em;
+    }
+
+    #mobile-scroll-hint {
+      display: block;
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: 0.15em;
+      color: var(--cyan); background: rgba(10,20,32,0.88);
+      border: 1px solid var(--panel-edge); padding: 8px 16px; border-radius: 20px;
+      z-index: 10; pointer-events: none; backdrop-filter: blur(6px);
+      box-shadow: 0 0 20px rgba(0,229,255,0.25);
+      transition: opacity 0.3s ease;
+      animation: bounceHint 1.8s infinite ease-in-out;
+    }
+
+    @keyframes bounceHint {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(5px); }
+    }
+
+    #left-sidebar {
+      position: relative !important;
+      top: auto !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100% !important;
+      max-height: none !important;
+      padding: 75vh 14px 10px 14px !important;
+      pointer-events: none;
+    }
+    #left-sidebar > * {
+      pointer-events: auto;
+    }
+
+    #right-sidebar {
+      position: relative !important;
+      top: auto !important;
+      right: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      max-height: none !important;
+      padding: 6px 14px 120px 14px;
+      pointer-events: none;
+    }
+    #right-sidebar > * {
+      pointer-events: auto;
+    }
+
+    #fire-btn, #decrypt-btn, #hacker-btn {
+      font-size: 10.5px;
+      padding: 12px 6px;
+      letter-spacing: 0.08em;
+    }
+
+    #key-bar {
+      position: fixed !important;
+      bottom: 12px !important;
+      left: 12px !important;
+      right: 12px !important;
+      transform: none !important;
+      min-width: auto !important;
+      max-width: none !important;
+      width: calc(100% - 24px) !important;
+      padding: 10px 14px;
+      clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%);
+    }
+    #key-bar.show {
+      transform: none !important;
+    }
+    #key-bar .kb-value {
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      word-break: break-all;
+    }
+
+    #hint {
+      display: none !important;
+    }
+
+    /* Hacker modal mobile optimization */
+    #hacker-modal {
+      padding: 12px;
+    }
+    .hm-box {
+      width: 100% !important;
+      max-width: 100% !important;
+      max-height: 88vh;
+      overflow-y: auto;
+      clip-path: none !important;
+      border-radius: 6px;
+    }
+    .hm-body > div[style*="grid"] {
+      grid-template-columns: 1fr !important;
+      gap: 8px !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    #eyebrow h1 {
+      font-size: 12.5px;
+      letter-spacing: 0.06em;
+    }
+    .field .value {
+      font-size: 12px;
+    }
+    .field.wide .value {
+      font-size: 11px;
+    }
   }
 </style>
 </head>
@@ -346,6 +499,8 @@
   <h1>CHIFFREMENT HOLOGRAPHIQUE TEMPOREL</h1>
 </div>
 
+<div id="mobile-scroll-hint">▼ FAIRE DÉFILER POUR LES CONTRÔLES</div>
+
 <div id="ram-label" class="world-label ram show">
   <span class="wl-title">Matrice 3D — Mémoire vive (RAM)</span>
   <span class="wl-sub">Fichier-clé restructuré en mémoire, jamais sur disque</span>
@@ -359,64 +514,39 @@
   <span class="wl-sub">Clé éphémère → Tier 3 (table chiffrée)</span>
 </div>
 
-<div id="tvg-panel">
-  <div class="panel-head">
-    <span>T.V.G. — GÉNÉRATEUR DE VECTEUR TEMPOREL</span>
-    <div class="dot" id="status-dot"></div>
-  </div>
+<div id="left-sidebar">
+  <div id="tvg-panel">
+    <div class="panel-head">
+      <span>T.V.G. — GÉNÉRATEUR DE VECTEUR TEMPOREL</span>
+      <div class="dot" id="status-dot"></div>
+    </div>
 
-  <div class="field wide">
-    <div class="label">Timestamp haute précision</div>
-    <div class="value" id="f-timestamp">—</div>
-  </div>
+    <div class="field wide">
+      <div class="label">Timestamp haute précision</div>
+      <div class="value" id="f-timestamp">—</div>
+    </div>
 
-  <div class="field wide">
-    <div class="label">Empreinte environnementale (hash local)</div>
-    <div class="value" id="f-hash">—</div>
-  </div>
+    <div class="field wide">
+      <div class="label">Empreinte environnementale (hash local)</div>
+      <div class="value" id="f-hash">—</div>
+    </div>
 
-  <div class="field">
-    <div class="label">Grain de sel composite</div>
-    <div class="coords">
-      <div><div class="label">X</div><div class="value" id="f-x">—</div></div>
-      <div><div class="label">Y</div><div class="value" id="f-y">—</div></div>
-      <div><div class="label">Z</div><div class="value" id="f-z">—</div></div>
+    <div class="field">
+      <div class="label">Grain de sel composite</div>
+      <div class="coords">
+        <div><div class="label">X</div><div class="value" id="f-x">—</div></div>
+        <div><div class="label">Y</div><div class="value" id="f-y">—</div></div>
+        <div><div class="label">Z</div><div class="value" id="f-z">—</div></div>
+      </div>
+      <div class="angles">
+        <div><div class="label">α (alpha)</div><div class="value" id="f-alpha">—</div></div>
+        <div><div class="label">β (beta)</div><div class="value" id="f-beta">—</div></div>
+      </div>
     </div>
-    <div class="angles">
-      <div><div class="label">α (alpha)</div><div class="value" id="f-alpha">—</div></div>
-      <div><div class="label">β (beta)</div><div class="value" id="f-beta">—</div></div>
-    </div>
-  </div>
 
-  <div id="fire-btn">1. CHIFFRER ET ANONYMISER LE DOSSIER</div>
-  <div id="decrypt-btn" class="disabled">2. DÉCHIFFRER (RESTAURATION SOUVERAINE)</div>
-  <div id="hacker-btn">SIMULER ATTAQUE QUANTIQUE (GROVER)</div>
-</div>
-
-<!-- DOCUMENT VIEWER -->
-<div id="doc-panel">
-  <div class="doc-head">
-    <span>DOSSIER MÉDICAL CONFIDENTIEL</span>
-    <div style="font-size:9px; color:var(--cyan); letter-spacing:0.1em; font-weight:700;">TIER 3</div>
-  </div>
-  <div class="doc-body">
-    <div class="doc-scanner" id="doc-scanner"></div>
-    <div class="doc-line">
-      <span class="doc-lbl">Patient</span>
-      <span class="doc-val" id="doc-patient">Jean Dupont</span>
-    </div>
-    <div class="doc-line">
-      <span class="doc-lbl">Pathologie</span>
-      <span class="doc-val" id="doc-disease">Diabète de Type 2</span>
-    </div>
-    <div class="doc-line">
-      <span class="doc-lbl">Localisation</span>
-      <span class="doc-val" id="doc-city">Paris (Île-de-France)</span>
-    </div>
-    <div class="doc-line">
-      <span class="doc-lbl">ID Réseau</span>
-      <span class="doc-val" id="doc-id">JD-75011</span>
-    </div>
+    <div id="fire-btn">1. CHIFFRER ET ANONYMISER LE DOSSIER</div>
+    <div id="decrypt-btn" class="disabled">2. DÉCHIFFRER (RESTAURATION SOUVERAINE)</div>
+    <div id="hacker-btn">SIMULER ATTAQUE QUANTIQUE (GROVER)</div>
   </div>
 </div>
 
@@ -436,7 +566,7 @@
             Algorithme : <span style="color:#ff8899;">Grover Search (Parallèle)</span><br>
             Qubits Actifs : <span style="color:#ff8899;">4096.00</span><br>
             Itérations : <span style="color:#ff8899;">232 462 183</span><br>
-            Espace de clé : <span style="color:#ff2e55; font-weight:700;">Infini (NP-Hard)</span>
+            Espace de clé : <span id="hm-vector-a-space"><span style="color:#ff2e55; font-weight:700;">Infini (NP-Hard)</span></span>
           </div>
         </div>
 
@@ -448,18 +578,18 @@
           <div style="color:#cfe8ff; line-height:1.6;">
             Loi de Zipf (Langage) : <span style="color:#ff8899;">0.01%</span><br>
             Entropie Topologique : <span style="color:#ff8899;">99.99% (Bruit Blanc)</span><br>
-            Masque de Vernam : <span style="color:#ff2e55; font-weight:700;">ABSENT (Local Only)</span><br>
-            Statut IA : <span style="color:#ff2e55; font-weight:700;">Pattern Introuvable</span>
+            Masque de Vernam : <span id="hm-vector-b-mask"><span style="color:#ff2e55; font-weight:700;">ABSENT (Local Only)</span></span><br>
+            Statut IA : <span id="hm-vector-b-status"><span style="color:#ff2e55; font-weight:700;">Pattern Introuvable</span></span>
           </div>
         </div>
       </div>
 
       <!-- BUTIN EXFILTRÉ -->
       <div class="hm-payload">
-        <div style="font-family:'Orbitron', sans-serif; font-weight:700; color:#ff5577; margin-bottom:8px; font-size:10.5px; letter-spacing:0.08em;">
+        <div id="hm-payload-title" style="font-family:'Orbitron', sans-serif; font-weight:700; color:#ff5577; margin-bottom:8px; font-size:10.5px; letter-spacing:0.08em;">
           BUTIN EXFILTRÉ (TIER 2 - JOHN DOE PROTOCOL)
         </div>
-        <div style="font-size:11px; line-height:1.7; color:#cfe8ff;">
+        <div id="hm-payload-text" style="font-size:11px; line-height:1.7; color:#cfe8ff;">
           &gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Dossier médical : Le patient <span style="color:#ff8899;" id="exfil-patient">#894-QX7</span> a subi <span style="color:#ff8899;" id="exfil-surgery">une angioplastie coronaire</span> à <span style="color:#ff8899;" id="exfil-loc">CHU Secteur Nord-4</span>. Anonymat total.<br>
           &gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Contrat intercepté : <span style="color:#ff8899;" id="exfil-compA">KRONOS BioTech</span> fusionne avec <span style="color:#ff8899;" id="exfil-compB">SYNERGY Global</span>. Identités introuvables.<br>
           &gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Jurisprudence : Affaire classée sous <span style="color:#ff8899;" id="exfil-dossier">#JUR-2026-8819X</span>. Aucune donnée personnelle exposée.
@@ -475,72 +605,101 @@
   </div>
 </div>
 
-<div id="settings-panel">
-  <div class="panel-head">
-    <span>CONTRÔLE ET PARAMÈTRES</span>
+<div id="right-sidebar">
+  <div id="settings-panel">
+    <div class="panel-head">
+      <span>CONTRÔLE ET PARAMÈTRES</span>
+    </div>
+
+    <div class="field">
+      <div class="label" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0;">
+        <span>Afficher les étiquettes 3D</span>
+        <input type="checkbox" id="cfg-labels" checked style="accent-color:var(--cyan); cursor:pointer;">
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Taille des marqueurs</span>
+        <span id="v-cfg-marker-size" style="color:var(--cyan);">1.0x</span>
+      </div>
+      <input type="range" id="cfg-marker-size" min="0.3" max="2.5" step="0.1" value="1.0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
+    </div>
+
+    <div class="field">
+      <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Taille des points (glyphes)</span>
+        <span id="v-cfg-point-size" style="color:var(--cyan);">1.0x</span>
+      </div>
+      <input type="range" id="cfg-point-size" min="0.4" max="3.0" step="0.1" value="1.0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
+    </div>
+
+    <div class="field">
+      <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Vitesse rotation matrice</span>
+        <span id="v-cfg-rot-speed" style="color:var(--cyan);">1.0x</span>
+      </div>
+      <input type="range" id="cfg-rot-speed" min="0" max="3.0" step="0.1" value="1.0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
+    </div>
+
+    <div class="field">
+      <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Nombre de virages (laser)</span>
+        <span id="v-cfg-turns" style="color:var(--cyan);">Auto</span>
+      </div>
+      <input type="range" id="cfg-turns" min="0" max="15" step="1" value="0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
+    </div>
   </div>
 
-  <div class="field">
-    <div class="label" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0;">
-      <span>Afficher les étiquettes 3D</span>
-      <input type="checkbox" id="cfg-labels" checked style="accent-color:var(--cyan); cursor:pointer;">
+  <!-- DOCUMENT VIEWER -->
+  <div id="doc-panel">
+    <div class="doc-head">
+      <span>DOSSIER MÉDICAL CONFIDENTIEL</span>
+      <div style="font-size:9px; color:var(--cyan); letter-spacing:0.1em; font-weight:700;">TIER 3</div>
+    </div>
+    <div class="doc-body">
+      <div class="doc-scanner" id="doc-scanner"></div>
+      <div class="doc-line">
+        <span class="doc-lbl">Patient</span>
+        <span class="doc-val" id="doc-patient">Jean Dupont</span>
+      </div>
+      <div class="doc-line">
+        <span class="doc-lbl">Pathologie</span>
+        <span class="doc-val" id="doc-disease">Diabète de Type 2</span>
+      </div>
+      <div class="doc-line">
+        <span class="doc-lbl">Localisation</span>
+        <span class="doc-val" id="doc-city">Paris (Île-de-France)</span>
+      </div>
+      <div class="doc-line">
+        <span class="doc-lbl">ID Réseau</span>
+        <span class="doc-val" id="doc-id">JD-75011</span>
+      </div>
     </div>
   </div>
 
-  <div class="field">
-    <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
-      <span>Taille des marqueurs</span>
-      <span id="v-cfg-marker-size" style="color:var(--cyan);">1.0x</span>
+  <!-- METADATA VAULT -->
+  <div id="vault-panel">
+    <div class="vlt-head">
+      <span>COFFRE-FORT MÉTADONNÉES (TIER 3)</span>
     </div>
-    <input type="range" id="cfg-marker-size" min="0.3" max="2.5" step="0.1" value="1.0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
-  </div>
-
-  <div class="field">
-    <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
-      <span>Taille des points (glyphes)</span>
-      <span id="v-cfg-point-size" style="color:var(--cyan);">1.0x</span>
-    </div>
-    <input type="range" id="cfg-point-size" min="0.4" max="3.0" step="0.1" value="1.0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
-  </div>
-
-  <div class="field">
-    <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
-      <span>Vitesse rotation matrice</span>
-      <span id="v-cfg-rot-speed" style="color:var(--cyan);">1.0x</span>
-    </div>
-    <input type="range" id="cfg-rot-speed" min="0" max="3.0" step="0.1" value="1.0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
-  </div>
-
-  <div class="field">
-    <div class="label" style="display:flex; justify-content:space-between; align-items:center;">
-      <span>Nombre de virages (laser)</span>
-      <span id="v-cfg-turns" style="color:var(--cyan);">Auto</span>
-    </div>
-    <input type="range" id="cfg-turns" min="0" max="15" step="1" value="0" style="width:100%; accent-color:var(--cyan); cursor:pointer; display:block; margin-top:6px;">
-  </div>
-</div>
-
-<!-- METADATA VAULT -->
-<div id="vault-panel">
-  <div class="vlt-head">
-    <span>COFFRE-FORT MÉTADONNÉES (TIER 3)</span>
-  </div>
-  <div class="vlt-body">
-    <div class="vlt-line">
-      <span class="vlt-lbl">Statut</span>
-      <span class="vlt-val" id="vlt-status" style="color:var(--text-dim);">[Aucune métadonnée]</span>
-    </div>
-    <div class="vlt-line">
-      <span class="vlt-lbl">Timestamp</span>
-      <span class="vlt-val" id="vlt-time">—</span>
-    </div>
-    <div class="vlt-line">
-      <span class="vlt-lbl">Vecteur XYZ</span>
-      <span class="vlt-val" id="vlt-coords">—</span>
-    </div>
-    <div class="vlt-line">
-      <span class="vlt-lbl">Angles α / β</span>
-      <span class="vlt-val" id="vlt-angles">—</span>
+    <div class="vlt-body">
+      <div class="vlt-line">
+        <span class="vlt-lbl">Statut</span>
+        <span class="vlt-val" id="vlt-status" style="color:var(--text-dim);">[Aucune métadonnée]</span>
+      </div>
+      <div class="vlt-line">
+        <span class="vlt-lbl">Timestamp</span>
+        <span class="vlt-val" id="vlt-time">—</span>
+      </div>
+      <div class="vlt-line">
+        <span class="vlt-lbl">Vecteur XYZ</span>
+        <span class="vlt-val" id="vlt-coords">—</span>
+      </div>
+      <div class="vlt-line">
+        <span class="vlt-lbl">Angles α / β</span>
+        <span class="vlt-val" id="vlt-angles">—</span>
+      </div>
     </div>
   </div>
 </div>
@@ -1532,12 +1691,56 @@ function randomizeExfilData() {
 function enterHackerMode() {
   if (firing || modeHacker) return;
   modeHacker = true;
-  randomizeExfilData();
   document.body.classList.add('hacker-mode');
   hackerSwarm.visible = true;
   hmStatus.classList.remove('show');
   hackerModal.classList.remove('show');
   fireBtn.classList.add('disabled');
+
+  const vecASpace = document.getElementById('hm-vector-a-space');
+  const vecBMask  = document.getElementById('hm-vector-b-mask');
+  const vecBStat  = document.getElementById('hm-vector-b-status');
+  const payTitle  = document.getElementById('hm-payload-title');
+  const payText   = document.getElementById('hm-payload-text');
+  const statusEl  = document.getElementById('hm-status');
+
+  if (!isEncrypted) {
+    // UNENCRYPTED STATE: Hacker exfiltrates real plaintext patient data!
+    if (vecASpace) vecASpace.innerHTML = '<span style="color:#ff2e55; font-weight:700;">Compromis (0 itérations)</span>';
+    if (vecBMask)  vecBMask.innerHTML  = '<span style="color:#ff2e55; font-weight:700;">ABSENT (Serveur vulnérable)</span>';
+    if (vecBStat)  vecBStat.innerHTML  = '<span style="color:#ff2e55; font-weight:700;">Texte en clair extrait</span>';
+    
+    if (payTitle) payTitle.textContent = 'BUTIN EXFILTRÉ (DONNÉES EN CLAIR NON SÉCURISÉES)';
+    if (payText) {
+      payText.innerHTML = `&gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Dossier médical : Patient <span style="color:#ff8899; font-weight:700;">Jean Dupont</span> (ID: <span style="color:#ff8899;">JD-75011</span>) — Pathologie: <span style="color:#ff8899;">Diabète de Type 2</span> à <span style="color:#ff8899;">Paris (Île-de-France)</span>.<br>` +
+        `&gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Statut Serveur : <span style="color:#ff2e55; font-weight:700;">Identité et données médicales volées sans chiffrement Q.O.P</span>.`;
+    }
+    if (statusEl) {
+      statusEl.textContent = 'EXFILTRATION RÉUSSIE — DONNÉES EN CLAIR VOLÉES SUR LE SERVEUR (SANS PROTECTION Q.O.P).';
+    }
+  } else {
+    // ENCRYPTED STATE: Q.O.P Tier 3 active, Hacker gets useless John Doe data!
+    if (vecASpace) vecASpace.innerHTML = '<span style="color:#ff2e55; font-weight:700;">Infini (NP-Hard)</span>';
+    if (vecBMask)  vecBMask.innerHTML  = '<span style="color:#ff2e55; font-weight:700;">ABSENT (Local Only)</span>';
+    if (vecBStat)  vecBStat.innerHTML  = '<span style="color:#ff2e55; font-weight:700;">Pattern Introuvable</span>';
+
+    if (payTitle) payTitle.textContent = 'BUTIN EXFILTRÉ (TIER 2 - JOHN DOE PROTOCOL)';
+    if (payText) {
+      const p = getRandomItem(clientIds);
+      const s = getRandomItem(surgeries);
+      const l = getRandomItem(locations);
+      const ca = getRandomItem(companiesA);
+      const cb = getRandomItem(companiesB);
+      const d = getRandomItem(dossiers);
+
+      payText.innerHTML = `&gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Dossier médical : Le patient <span style="color:#ff8899;">${p}</span> a subi <span style="color:#ff8899;">${s}</span> à <span style="color:#ff8899;">${l}</span>. Anonymat total.<br>` +
+        `&gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Contrat intercepté : <span style="color:#ff8899;">${ca}</span> fusionne avec <span style="color:#ff8899;">${cb}</span>. Identités introuvables.<br>` +
+        `&gt; <span style="color:#ff2e55; font-weight:700;">EXFIL</span> Jurisprudence : Affaire classée sous <span style="color:#ff8899;">${d}</span>. Aucune donnée personnelle exposée.`;
+    }
+    if (statusEl) {
+      statusEl.textContent = 'ÉCHEC DU DÉCHIFFREMENT. COMPLEXITÉ NP-HARD. DONNÉES INEXPLOITABLES.';
+    }
+  }
 
   edges.material.color.setHex(0xff2e55);
   crystal.material.color.setHex(0x3a0812);
@@ -1584,6 +1787,17 @@ if (hmCloseBtn) hmCloseBtn.addEventListener('click', exitHackerMode);
 // ============================================================================
 //  RESIZE
 // ============================================================================
+window.addEventListener('scroll', () => {
+  const scrollHint = document.getElementById('mobile-scroll-hint');
+  if (scrollHint) {
+    if (window.scrollY > 50) {
+      scrollHint.style.opacity = '0';
+    } else {
+      scrollHint.style.opacity = '1';
+    }
+  }
+});
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
